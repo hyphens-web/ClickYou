@@ -1,6 +1,9 @@
 import { NextRequest } from "next/server";
 import { spawn } from "child_process";
 import { Readable } from "stream";
+import fs from "fs";
+
+console.log(fs.existsSync("./cookies.txt"));
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +18,9 @@ export async function GET(req: NextRequest) {
   try {
     const process = spawn("yt-dlp", [
       "--no-playlist",
-      "-f", "18", // 🔥 solução
+      "-f", "18",
+      "--cookies", "./cookies.txt",
+      "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
       "-o", "-",
       url
     ]);
