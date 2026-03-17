@@ -10,16 +10,18 @@ export async function GET(req: NextRequest) {
   if (!url) return new Response("URL necessária", { status: 400 });
 
   try {
-    const process = spawn("yt-dlp", [
-      "-f",
-      "best[ext=mp4]",
-      "--merge-output-format",
-      "mp4",
-      "--no-playlist",
-      "-o",
-      "-",
-      url
-    ]);
+    const process = spawn(
+      "C:\\Users\\Administrator\\AppData\\Local\\Python\\PythonCore-3.14-64\\Scripts\\yt-dlp.exe",
+      [
+        "-f",
+        "best[ext=mp4]", // garante mp4 válido
+        "--merge-output-format",
+        "mp4", // força juntar áudio + vídeo
+        "-o",
+        "-", // envia para o stream
+        url
+      ]
+    );
 
     return new Response(process.stdout as any, {
       headers: {
