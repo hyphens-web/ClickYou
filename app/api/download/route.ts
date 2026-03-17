@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const process = spawn(
-      "C:\\Users\\Administrator\\AppData\\Local\\Python\\PythonCore-3.14-64\\Scripts\\yt-dlp.exe",
+      "C:\\Users\\Administrator\\AppData\\Local\\Python\\PythonCore-3.14-64\\Scripts\\yt-dlp",
       [
         "-f",
         "best[ext=mp4]", // garante mp4 válido
