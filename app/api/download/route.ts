@@ -5,47 +5,69 @@ import path from "path";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const url = searchParams.get("url");
+  try {
+    const { searchParams } = new URL(req.url);
+    const url = searchParams.get("url");
 
-  if (!url) return new Response("URL necessária", { status: 400 });
+    if (!url) return new Response("URL necessária", { status: 400 });
 
-  const binPath = path.join(process.cwd(), "bin");
-  const ytDlpPath = path.join(binPath, "yt-dlp.exe");
-  const ffmpegPath = path.join(binPath, "ffmpeg.exe");
+    const binPath = path.join(process.cwd(), "bin");
+    const ytDlpPath = path.join(binPath, "yt-dlp.exe");
+    const ffmpegPath = path.join(binPath, "ffmpeg.exe");
 
-  const ls = spawn(
-    ytDlpPath,
-// ... dentro do spawn do Vídeo
-[
-  "--no-playlist", // ADICIONE ISSO AQUI
-  url,
-  "-o", "-", 
-  "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
-  "--ffmpeg-location", ffmpegPath,
-  "--merge-output-format", "mp4",
-  "--postprocessor-args", "ffmpeg:-vcodec libx264 -acodec aac -movflags frag_keyframe+empty_moov+default_base_moof",
-  ], 
-    { shell: true, windowsHide: true }
-  );
-
-  const stream = new ReadableStream({
-    start(controller) {
-      ls.stdout.on("data", (chunk) => controller.enqueue(new Uint8Array(chunk)));
-      ls.on("close", (code) => {
-        if (code === 0) controller.close();
-        else controller.error(new Error(`Erro: ${code}`));
+    // 1) Pega o título do vídeo
+    const title = await new Promise<string>((resolve) => {
+      const titleProcess = spawn(ytDlpPath, ["--get-title", url], { shell: false, windowsHide: true });
+      let data = "";
+      titleProcess.stdout.on("data", (chunk) => data += chunk.toString("utf-8"));
+      titleProcess.on("close", () => {
+        const safeTitle = data.trim().replace(/[/\\?%*:|"<>]/g, "_");
+        resolve(safeTitle || "video_clickyou");
       });
-      ls.on("error", (err) => controller.error(err));
-    },
-    cancel() { ls.kill(); },
-  });
+      titleProcess.on("error", () => resolve("video_clickyou"));
+    });
 
-  return new Response(stream as any, {
-    headers: {
-      "Content-Type": "video/mp4",
-      "Content-Disposition": `attachment; filename="video_clickyou.mp4"`,
-      "Cache-Control": "no-cache",
-    },
-  });
+    // 2) Baixa o vídeo direto com qualidade moderada
+    const ytProcess = spawn(
+      ytDlpPath,
+      [
+        "--no-playlist",
+        "-f",
+        "best[ext=mp4][height<=720]", // limita a 720p, evita arquivos gigantes
+        "--ffmpeg-location",
+        ffmpegPath,
+        "-o",
+        "-", // envia para stdout
+        url,
+      ],
+      { shell: false, windowsHide: true }
+    );
+
+    ytProcess.stderr.on("data", (d) => console.error(d.toString()));
+
+    const stream = new ReadableStream({
+      start(controller) {
+        ytProcess.stdout.on("data", (chunk: Buffer) => controller.enqueue(new Uint8Array(chunk)));
+        ytProcess.on("close", (code) => {
+          if (code === 0) controller.close();
+          else controller.error(new Error(`Erro ao baixar vídeo: ${code}`));
+        });
+        ytProcess.on("error", (err) => controller.error(err));
+      },
+      cancel() {
+        ytProcess.kill();
+      },
+    });
+
+    return new Response(stream as any, {
+      headers: {
+        "Content-Type": "video/mp4",
+        "Content-Disposition": `attachment; filename="${title}.mp4"`,
+      },
+    });
+
+  } catch (err) {
+    console.error(err);
+    return new Response("Erro interno", { status: 500 });
+  }
 }
