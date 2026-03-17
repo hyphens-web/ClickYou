@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
-import { spawn } from "child_process";
-import path from "path";
+import ytdl from "@distube/ytdl-core";
 
 export const dynamic = "force-dynamic";
 
@@ -10,42 +9,26 @@ export async function GET(req: NextRequest) {
 
   if (!url) return new Response("URL necessária", { status: 400 });
 
-  const binPath = path.join(process.cwd(), "bin");
-  const ytDlpPath = path.join(binPath, "yt-dlp.exe");
-  const ffmpegPath = path.join(binPath, "ffmpeg.exe");
+  try {
+    const audioStream = ytdl(url, {
+      filter: "audioonly", // Aqui dizemos para pegar só o áudio
+      quality: "highestaudio", // Melhor qualidade de som disponível
+      requestOptions: {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        },
+      },
+    });
 
-  const ls = spawn(
-    ytDlpPath,
-// ... dentro do spawn do Áudio
-[
-    "--no-playlist", // ADICIONE ISSO AQUI
-    url,
-    "-o", "-", 
-    "-x", 
-    "--audio-format", "mp3", 
-    "--audio-quality", "0", 
-    "--ffmpeg-location", ffmpegPath,
-  ],
-    { shell: true, windowsHide: true }
-  );
-
-  const stream = new ReadableStream({
-    start(controller) {
-      ls.stdout.on("data", (chunk) => controller.enqueue(new Uint8Array(chunk)));
-      ls.on("close", (code) => {
-        if (code === 0) controller.close();
-        else controller.error(new Error(`Erro: ${code}`));
-      });
-      ls.on("error", (err) => controller.error(err));
-    },
-    cancel() { ls.kill(); },
-  });
-
-  return new Response(stream as any, {
-    headers: {
-      "Content-Type": "audio/mpeg",
-      "Content-Disposition": 'attachment; filename="audio_clickyou.mp3"',
-      "Cache-Control": "no-cache",
-    },
-  });
+    return new Response(audioStream as any, {
+      headers: {
+        "Content-Type": "audio/mpeg", // Formato MP3
+        "Content-Disposition": 'attachment; filename="musica_clickyou.mp3"',
+        "Cache-Control": "no-cache",
+      },
+    });
+  } catch (error: any) {
+    console.error("Erro no MP3:", error.message);
+    return new Response(`Erro ao processar áudio: ${error.message}`, { status: 500 });
+  }
 }
