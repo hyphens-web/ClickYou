@@ -15,8 +15,7 @@ export async function GET(req: NextRequest) {
   try {
     const process = spawn("yt-dlp", [
       "--no-playlist",
-      "-f", "bv*+ba/b",
-      "--merge-output-format", "mp4",
+      "-f", "18", // 🔥 solução
       "-o", "-",
       url
     ]);
