@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
 
     // 2) spawn para download direto em stream
     const ytProcess = spawn(
-      ytDlpPath,
+      "yt-dlp",
       [
         "--no-playlist",
         "-x",
@@ -38,12 +38,12 @@ export async function GET(req: NextRequest) {
         "--audio-quality",
         "0",
         "--ffmpeg-location",
-        ffmpegPath,
+        "ffmpeg",
         "-o",
-        "-", // envia para stdout
+        "-",
         url,
       ],
-      { shell: false, windowsHide: true }
+      { shell: false }
     );
 
     ytProcess.stderr.on("data", (d) => console.error(d.toString()));

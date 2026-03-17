@@ -12,8 +12,8 @@ export async function GET(req: NextRequest) {
     if (!url) return new Response("URL necessária", { status: 400 });
 
     const binPath = path.join(process.cwd(), "bin");
-    const ytDlpPath = path.join(binPath, "yt-dlp.exe");
-    const ffmpegPath = path.join(binPath, "ffmpeg.exe");
+    const ytDlpPath = path.join(binPath, "yt-dlp");
+    const ffmpegPath = path.join(binPath, "ffmpeg");
 
     // 1) Pega o título do vídeo
     const title = await new Promise<string>((resolve) => {
@@ -29,18 +29,21 @@ export async function GET(req: NextRequest) {
 
     // 2) Baixa o vídeo direto com qualidade moderada
     const ytProcess = spawn(
-      ytDlpPath,
+      "yt-dlp",
       [
         "--no-playlist",
-        "-f",
-        "best[ext=mp4][height<=720]", // limita a 720p, evita arquivos gigantes
+        "-x",
+        "--audio-format",
+        "mp3",
+        "--audio-quality",
+        "0",
         "--ffmpeg-location",
-        ffmpegPath,
+        "ffmpeg",
         "-o",
-        "-", // envia para stdout
+        "-",
         url,
       ],
-      { shell: false, windowsHide: true }
+      { shell: false }
     );
 
     ytProcess.stderr.on("data", (d) => console.error(d.toString()));
